@@ -7,7 +7,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	u2fhost "github.com/marshallbrekka/go-u2fhost"
+	u2fhost "github.com/alsmola/go-u2fhost"
 )
 
 const (
@@ -29,9 +29,10 @@ type FidoClient struct {
 }
 
 type SignedAssertion struct {
-	StateToken    string `json:"stateToken"`
-	ClientData    string `json:"clientData"`
-	SignatureData string `json:"signatureData"`
+	StateToken        string `json:"stateToken"`
+	ClientData        string `json:"clientData"`
+	SignatureData     string `json:"signatureData"`
+	AuthenticatorData string `json:"authenticatorData"`
 }
 
 func NewFidoClient(challengeNonce, appId, version, keyHandle, stateToken string) (FidoClient, error) {
@@ -71,10 +72,10 @@ func (d *FidoClient) ChallengeU2f() (*SignedAssertion, error) {
 	}
 	request := &u2fhost.AuthenticateRequest{
 		Challenge: d.ChallengeNonce,
-		// the appid is the only facet.
-		Facet:     d.AppId,
+		Facet:     "https://" + d.AppId,
 		AppId:     d.AppId,
 		KeyHandle: d.KeyHandle,
+		WebAuthn:  true,
 	}
 	// do the change
 	prompted := false
@@ -96,9 +97,10 @@ func (d *FidoClient) ChallengeU2f() (*SignedAssertion, error) {
 			response, err := d.Device.Authenticate(request)
 			if err == nil {
 				responsePayload = &SignedAssertion{
-					StateToken:    d.StateToken,
-					ClientData:    response.ClientData,
-					SignatureData: response.SignatureData,
+					StateToken:        d.StateToken,
+					ClientData:        response.ClientData,
+					SignatureData:     response.SignatureData,
+					AuthenticatorData: response.AuthenticatorData,
 				}
 				fmt.Printf("  ==> Touch accepted. Proceeding with authentication\n")
 				return responsePayload, nil
